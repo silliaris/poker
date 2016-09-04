@@ -1,26 +1,36 @@
-#define ROW_SIZE 15
+#ifndef UI_INCLUDED
+#define UI_INCLUDED
+
+#include <stdio.h>
+#include <cstring>
+#include "poker.hpp"
+
+struct UI {
+	int blankSpaces[2];
+};
+
+#define ROW_SIZE 18
 #define SCREEN_WIDTH 100
 
-//-- SCREEN FUNCTIONS
-void 	clearScreen();
-void 	printDeck();
-void 	printHand(struct Player* player);
-void 	printBoardCards();
-
-//-- INTERACTION INTERFACE
-void 	linesSeparator(string symbol, int linesCount, int linesLength);
-void	pressEnterToContinue();
 void	mainMenu();
 void	introScreen();
-void	printEmptyLines(int linesCount);
+void 	clearScreen();
+
 void 	printScreenHeader();
-void 	printScreenFooter(string infoText, string actionText, string message);
-
-//-- UNDER CONSTRUCTION
-void	composeScreen (string infoText, string actionText, string message);
-
-//-- WINNER SCREEN FUNCTIONS
-struct Player* 	resultsScreen();
+void 	printScreenFooter(const char* infoText, const char* actionText, const char* message);
+void	printHand(P_PLAYER player);
 void 	printCardTable();
-int 	stringLength(string str);
-void 	printSpaces(int count);
+void	printBoardCards();
+
+void	printEmptyLines(int count);
+void	printSpaces (int count);
+void 	linesSeparator(const char* symbol, int linesCount, int linesLength);
+
+void 	createScreen (const char *infoText, const char *actionText, const char *message);
+void 	createBetScreen(int minimumBet, int maximumBet);
+void 	resultsScreen(P_PLAYER winner);
+
+void	pressEnterToContinue();
+void	wrongInputScreen();
+
+#endif

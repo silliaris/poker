@@ -1,24 +1,18 @@
-#pragma once
 #include <stdio.h>
 #include <ctype.h>
 #include <iostream>
-#include <string>
-#include <utility>
-#include <algorithm>
 #include <math.h>
-//#include <cstring>
 
+#include "poker.hpp"
 #include "betting.hpp"
-#include "poker.cpp"
+#include "cardCalculation.hpp"
 
-
-struct Player*	currentPlayer() {
+P_PLAYER currentPlayer() {
 	return game.flow.pCurrentPlayer;
 }
 
 //remove money from player, add them into common pool, add them into player's bet pool
 void processMoneyBet(struct Player* player, int bet, int minBet) {
-	//potřebuju zjistit, kolik jsem ve skutečnosti vsadil
 	
 	int realBet = bet + minBet;
 	
@@ -32,76 +26,37 @@ void processMoneyBet(struct Player* player, int bet, int minBet) {
 	}
 }
 
-int isPlayer (struct Player *player) {
+int isPlayer(P_PLAYER player) {
 	if (player == pPlayers[0])
 		return 1;
 	return 0;
 }
 
-//this is slightly altered function for screen creation, making composeScreen() obsolete
-void createScreen (string infoText, string actionText, string message) {
-	game.flow.infoText = infoText;
-	game.flow.actionText = actionText;
-	
-	clearScreen();
-	printScreenHeader();
-	assignBlankSpaces(11); //11 spaces on sceen by default
-	
-	printEmptyLines(ui.blankSpaces[0]);
-	printHand(&player1);
-	printEmptyLines(2);
-	printBoardCards();
-	printEmptyLines(ui.blankSpaces[1]);
-
-	printScreenFooter(infoText, actionText, message);
-}
-
-void wrongInputScreen () {
-	createScreen(game.flow.infoText,game.flow.actionText,"Wrong input. Try again.");
-}
-
-void createBetScreen (int minimumBet, int maximumBet) {
-	string limits = "Minimum bet: " + to_string(minimumBet) + ". Maximum bet: " + to_string(maximumBet);
-	createScreen("Enter your bet (number) or fold cards (F):",limits,"");
-}
-
-
-struct Player* nextPlayer() {
+P_PLAYER nextPlayer() {
 	int playerNumber = -1;
 
 	//find out player's number in pPlayers array
-	for (int i = 0; i < MAX_PLAYERS; i++) {
+	for (int i = 0; i < MAX_PLAYERS; i++)
 		if (game.flow.pCurrentPlayer == pPlayers[i]) {
 			playerNumber = i;
 			break;
 		}
-	}
-	
-	if (playerNumber < 0) {
-		cout << "Debug: Next player not chosen" << endl;
-		//This should be ideally handled as exception
-	}
-
-	//if this is last player, bring us a first one
 	if (playerNumber == MAX_PLAYERS - 1) {
 		//loop to first player
 		game.flow.pCurrentPlayer = pPlayers[0];
-		cout << "Returning to first player" << endl;
 	} else {
 		game.flow.pCurrentPlayer = pPlayers[playerNumber+1];
 	}
-	//cout << "Next player: " << game.flow.pCurrentPlayer->name << endl;
 	return game.flow.pCurrentPlayer;
 }
 
-int enterBetAI (struct Player* player, int minimumBet) {
-	//TODO: přidat raise chance a zmenšit fold v závislosti na agresivitě - POZDĚJI
+int enterBetAI (P_PLAYER player, int minimumBet) {
 
-	int bluffingVal = player->AIAgressivity;
+	//int bluffingVal = player->AIAgressivity; //not currently used
 	int handValue = calculateHandValue(player);
 	int totalBet = game.bet.pot;
 	int round = game.flow.round;
-	int maxBet = maximumBet();
+	int maxBet = maximumBet(player);
 	int foldChance = 0;
 	int raiseChance = 0;
 	int raiseValue = 0;
@@ -111,6 +66,15 @@ int enterBetAI (struct Player* player, int minimumBet) {
 	srand((unsigned) time(&t));	
 	int randomNumber = rand() % 100;
 	
+	//all in option
+	if (maxBet <= minimumBet) {
+		player->allIn = 1;
+		if (maxBet > minimumBet)
+			return maxBet - minimumBet;
+		else
+			return 0;
+	}
+		
 	if (handValue < 16) {
 		foldChance = 10;
 		raiseChance = 5;
@@ -119,34 +83,27 @@ int enterBetAI (struct Player* player, int minimumBet) {
 		raiseChance = 25;
 	}
 	
-	//větší raise v závislosti na hodnotě karet:
-	if (handValue > 16) {
+	//higher raise change depending on value of hand cards
+	if (handValue > 16)
 		raiseChance += sqrt(handValue) * 0.5;
-	}	
 	
-	//čím vyšší stakes a menší handValue, tak tím vyšší fold chance
+	//larger the stakes and lesser handValue, the higher is fold chance
 	if (minimumBet > 0)
 		foldChance += (minimumBet + (totalBet * 0.1)) / (sqrt(handValue) + 5);
 	else
 		foldChance = 0;
-	
-	cout << endl;
-	cout << "Round" << round << endl;
-	cout << "Random number: " << randomNumber << endl;
-	cout << "handValue: " << handValue << endl;
-	cout << player->name << " chances:" << endl
-	<< "foldChance " << foldChance << endl 
-	<< "raiseChance " << raiseChance << endl;
-	
-	//výpočet prohození
-	
+
+	//debug print
+	printf("\nRound %d \nrandomNumber: %d \nhandValue: %d \n%s chances: \nfoldChance %d \nraiseChance %d \n",
+		   round, randomNumber, handValue, player->name, foldChance, raiseChance);
+
 	if (randomNumber <= foldChance) {
 		return -1;		//fold
 	} else if (randomNumber >= 100-raiseChance) {
-		//výpočet, o kolik raisnout
+		//calculation how much to raise
 		int raiseRate = randomNumber - (100 - raiseChance);
 
-		//potřebuju raise rate zaokrouhlit na desítky
+		//round raise value
 		raiseValue = (raiseRate / 10);
 		raiseValue = minimumBet + (raiseValue * 10);
 		
@@ -154,124 +111,221 @@ int enterBetAI (struct Player* player, int minimumBet) {
 			raiseValue = maxBet;
 		
 		return raiseValue - minimumBet;
-	} 
+	}
 	else {
 		return 0; //called
 	}
 }
 
-/*
-//currently not used
-int enterBetPlayer (struct Player* player, int minimumBet) {
-	string input;
-	string line1;
+P_PLAYER moveSmallBlindPlayer() {
+	if (game.bet.smallBlindPlayer == nullptr)
+		game.bet.smallBlindPlayer = pPlayers[0];
+	P_PLAYER smallBlindPlayer = game.bet.smallBlindPlayer;
+	
+	for(int i = 0; i < MAX_PLAYERS; i++)
+	{
+		if (smallBlindPlayer == pPlayers[i]) {
+			game.bet.smallBlindPlayer = pPlayers[i+1];
+			printf("New small blind player is: %s\n", pPlayers[i+1]->name);
+			return pPlayers[i+1];
+		}
+	}
+	return nullptr;
+}
+
+int betRound() {
+	
 	int bet;
+	P_PLAYER playerOnTurn = game.flow.pCurrentPlayer;
+	if (game.flow.round == 0)
+		playerOnTurn = game.bet.smallBlindPlayer;
 
-	cout << "Player: " << player->name << endl; //DEBUG
+	//auto-bets
+	if (game.flow.round == 0) {
+		smallBlindBet(playerOnTurn);
+		playerOnTurn = nextPlayer();
+		bigBlindBet(playerOnTurn);
+		playerOnTurn = nextPlayer();
+	}
 
-	//player entering bet
-	if (isPlayer(player)) {
-		createBetScreen(minimumBet, maximumBet());
-		int validInput = 0;
-		while (!validInput) {
-			cin >> input;
-			if (isdigit(input[0])) {
-				bet = stoi(input);
-				if (bet >= minimumBet && bet <= maximumBet()) {
-					cout << "Valid input entered" << endl;
-					validInput = 1;
-				} else {
-					wrongInputScreen();
-				}
-			} else if (input[0] == 'F' || input[0] == 'f') {
-				//valid input -> go to next screen
-				validInput = 1;
-				cout << "Fold input entered" << endl;
-				bet = -1;
-			} else {
-				cout << "Wrong input" << endl;
-				wrongInputScreen();
+	//manual bets
+	for (int i = 0; i < MAX_PLAYERS; i++) {
+		printf("Player on turn: %s - %d\n", playerOnTurn->name, i);
+
+		if (playerOnTurn->isInGame && !playerOnTurn->allIn) {
+			if (isPlayer(playerOnTurn))
+				bet = betPlayer(playerOnTurn);
+			else
+				bet = betAI(playerOnTurn);
+
+			switch (bet) {
+				case -1: //fold
+					playerOnTurn->isInGame = 0;
+					break;
+				case 0:	//check
+					break;
+				default: //raise - resatrt bet round
+					i = -1;
+					break;
 			}
 		}
-		//cin.ignore();
-	} else {
-		//AI calculating bet
-		bet = enterBetAI(player, minimumBet);
-		if (bet < 0) {
-			line1 = player->name + " folded.";
-		} else {
-			line1 = player->name + " has betted " + to_string(bet);
-		}
-		createScreen(line1,"","PRESS ENTER TO CONTINUE");
-		//cin.ignore();
+		
+		playerOnTurn = nextPlayer();
+		
+		//end betting if other players folded
+		if (countPlayersInGame() < 2)
+			return 0;
 	}
-	cin.ignore();
+	return 1;
+}
 
-	processMoneyBet(player, bet, minimumBet);
-	cout << "BET: " << bet << endl; //DEBUG print
+int countPlayersInGame() {
+	//check if other players folded
+	int playersInGame = 0;
+	for (int p = 0; p < MAX_PLAYERS; p++)
+		if(pPlayers[p]->isInGame)
+			playersInGame++;
+	return playersInGame;
+}
+
+int betAI(P_PLAYER player) {
+	int minimum = minimumBet(player);
+	int bet = enterBetAI(player, minimum);
+	const char* infoText;
+	char textBuffer[50];
+
+	processMoneyBet(player, bet, minimum);
 	
+	switch (bet) {
+		case -1:
+			sprintf(textBuffer, "%s folded", player->name);
+			infoText = textBuffer;
+			//infoText = player->name + " folded.";
+			break;
+		case 0:
+			if (minimum > 0)
+				//infoText = player->name + " called to " + to_string(player->moneyBet);
+				sprintf(textBuffer, "%s called to %d", player->name, player->moneyBet);
+			else
+				//infoText = player->name + " checked";
+				sprintf(textBuffer, "%s checked", player->name);
+			infoText = textBuffer;
+
+			break;
+		default:
+			//infoText = player->name + " has raised by " + to_string(bet) + " to bet of " + to_string(player->moneyBet);
+			sprintf(textBuffer, "%s has raised by %d to bet of %d", player->name, bet, player->moneyBet);
+			infoText = textBuffer;
+			break;
+	}
+	if (player->allIn) {
+		//infoText = player->name + " goes ALL IN with bet of " + to_string(player->moneyBet);
+		sprintf(textBuffer, "%s goes ALL IN with bet of %d", player->name, player->moneyBet);
+		infoText = textBuffer;
+	}
+
+	createScreen(infoText,"","PRESS ENTER TO CONTINUE");
+	getchar();
 	return bet;
 }
-*/
 
-/*
-void bettingCycle() {
-	game.bet.minBet = 10; //na začátku každého cyklu je minBet 10
-	game.bet.lastPlayerToRaise = nullptr;
-	
-	//3x pustím betting round, ale dívám se, jestli mi nevyšla nula
-	for (int i = 0; i < 3; i++) {
-		//hráč, který začíná bettig round je vždy small blind
-		game.flow.pCurrentPlayer = game.bet.smallBlindPlayer; //PRŮSERR: POTŘEBUJU DOSTAT ČÍSLO CURRENTPLAYERA Z POINTERU NA SMALLBETTERA
+int betPlayer(P_PLAYER player) {
+	int minimum = minimumBet(player);
+	int maximum = maximumBet(player);
+	int bet;
+	char input[100];
+	//int bet = enterBetPlayer(player, minimum);
 
-		if (bettingRound() == 0) {
-			break;
-		}
-	}
-	game.flow.pCurrentPlayer = game.bet.smallBlindPlayer; //PRŮSERR: POTŘEBUJU DOSTAT ČÍSLO CURRENTPLAYERA Z POINTERU NA SMALLBETTERA
-	return;
-}
-*/
+	createBetScreen(minimum,maximum);
 
-/*
-struct Player* bettingRound() {
-	struct Player* curPlayer = currentPlayer();
-	int currentBet;
-	int minimumBet;
-	
-	for (int i = 0; i < MAX_PLAYERS; i++) {
-		cout << "Player on turn: " << curPlayer->name << endl;
-		if (curPlayer->isInGame) {
-			currentBet = enterBetPlayer(curPlayer, minimumBet);
+	//wait for valid input
+	int validInput = 0;
+	while (!validInput) {
+		fgets (input, 100, stdin);
 
-
-			
-			if (currentBet >= 0) {
-				if (currentBet > game.bet.minBet) {
-					//find out if he raised or checked
-					game.bet.minBet = currentBet;
-					game.bet.lastPlayerToRaise = curPlayer;
-				} else if (game.bet.lastPlayerToRaise == curPlayer) {
-					//pokud poslední hráč, který zvyšoval, nepřisadil, tak končí celé sázení
-					cout << "Moving to anothe bet round." << endl;
-					return 0;
-				}
-			} else {
-				//fold cards
-				curPlayer->isInGame = 0;
-				cout << "Player " << curPlayer->name << " folded" << endl; //debug print
+		if (isdigit(input[0])) {
+			bet = atoi(input);
+			if (bet >= minimum && bet <= maximum) {
+				validInput = 1;
 			}
+			else if (bet < minimum && bet > maximum) {
+				validInput = 1;
+				player->allIn = 1;
+			} else {
+				wrongInputScreen();
+			}			
+		} else if (input[0] == 'F' || input[0] == 'f') {
+			validInput = 1;
+			printf("Fold input entered \n");
+			bet = -1;
 		} else {
-			cout << "Player " << curPlayer->name << " is not in game anymore" << endl; //debug print
+			printf("Wrong input\n");
+			wrongInputScreen();
 		}
-		cout << "Getting next player" << endl;
-		curPlayer = nextPlayer();
 	}
+	//getchar();
 	
-	cout << "First betting round ended" << endl;
-	//return the last player who raised betOnBoard, return current minimum bet
-	return curPlayer;
+	//find out if raised or fold
+	if (bet == minimum)
+		bet = 0;
+	else if (bet > minimum)
+		bet = bet - minimum;
+
+	processMoneyBet(player, bet, minimum);
+	printf("BET: %d\n", bet);
+
+	// 	OUTPUTS:
+	// 	Folded:	-1
+	// 	Called:	 0
+	// 	Raised:	>0 - říká, o kolik jsi zvýšil
+	return bet;
 }
-*/
 
+int smallBlindBet (P_PLAYER player) {
+	processMoneyBet(player, 5, 0);
 
+	char infoText[32];
+	strcpy(infoText, player->name);
+	strcat(infoText, " is SMALL BLIND");
+
+	createScreen (infoText, "", "PRESS ENTER TO CONTINUE");
+	getchar();
+	return 5;
+}
+
+int bigBlindBet (P_PLAYER player) {
+	processMoneyBet(player, 5, 5);
+
+	char infoText[32];
+	strcpy(infoText, player->name);
+	strcat(infoText, " is BIG BLIND");
+
+	createScreen (infoText, "", "PRESS ENTER TO CONTINUE");
+	getchar();
+	return 5;
+}
+
+int minimumBet(P_PLAYER player) {
+	return game.bet.betOnTable - player->moneyBet;
+}
+
+int maximumBet(P_PLAYER player) {
+	//you can only rise amount of bet on board - if you have enough money
+	if (player->moneyTotal > game.bet.pot)
+		return game.bet.pot;
+	else 
+		return player->moneyTotal;
+}
+
+void processEndOfRound(P_PLAYER winner) {
+	//zero all bets
+	for (int i = 0; i < MAX_PLAYERS; i++) {
+		if (pPlayers[i] == winner)
+			winner->moneyTotal += game.bet.pot;
+		pPlayers[i]->moneyBet = 0;
+	}
+
+	game.bet.pot = 0;
+	game.bet.betOnTable = 0;
+	//game.betOnBoard = 0; //OBSOLETE
+}

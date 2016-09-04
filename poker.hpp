@@ -1,11 +1,12 @@
-//sizes of different arrays (is this really needed?)
+#ifndef POKER_DEFINED
+#define POKER_DEFINED
+
+//DEFINES
 #define HAND_AND_BOARD_SIZE 7
 #define HAND_SIZE 2
 #define BOARD_SIZE 5
-
 #define MAX_PLAYERS 4
 
-//Game flow modes
 #define MODE_INTRO 0
 #define MODE_MENU 1
 
@@ -16,74 +17,60 @@
 
 #define MAX_PHASE 4
 
-struct Cards {
-	int 	value;
-	int 	color;
-	string 	name;
-};
+typedef struct Card {
+	int			value;
+	int			color;
+	const char* name;
+} CARD, *P_CARD;
 
+typedef struct Player {
+	const char* name;
+	int         moneyTotal;
+	int         moneyBet;
+	int         handValue;
+	int         isInGame;
+	int         AIAgressivity;
+	int         allIn;
+	const char* cardCombination;
+	CARD        hand[2];
+	CARD        handAndBoard[7];
+} PLAYER, *P_PLAYER;
 
-struct UI {
-	int blankSpaces[2];
-} ui;
+typedef struct GameFlow {
+	int			round; //betting round
+	P_PLAYER	pCurrentPlayer;
+	const char* infoText;
+	const char* actionText;
+} FLOW, *P_FLOW;
 
-struct Game 
-{
+typedef struct Beting {
+	//money on board
+	int			pot; //ALL MONEY IN ROUND
+	int			betOnTable; //how high is bet
+	P_PLAYER	smallBlindPlayer;
+} BET, *P_BET;
+
+struct Game {
 	int 	posOnBoard;
 	int 	posInDeck;
 	int		betOnBoard;
-
-	struct Cards deck[52], boardCards[5], temp;
-
-	struct GameFlow {
-		int phase; // game phase - start, flop, turn, river, finish
-		int round; // round - how many games were played already
-		//int currentPlayer;
-		struct Player* pCurrentPlayer;
-		string infoText;
-		string actionText;
-	} flow;
-
-	struct Beting {
-		//money on board
-		int	pot; //ALL MONEY IN ROUND
-		int	betOnTable; //how high is bet
-		int timesRaised;
-
-		int minBet;	//OBSOLETE
-		int maxBet;	//OBSOLETE
-		int playerOnTurn;
-		int bettingRound; //JAK se liší od round?
-		struct Player* lastPlayerToRaise;
-		struct Player* smallBlindPlayer;
-	} bet;
-} game;
-
-struct Player {
-	int 	id;
-	string 	name;	
-	int 	moneyTotal;
-	int 	moneyBet;
-	int 	isInGame;
-	int		handValue;
-	int		AIAgressivity;
-	struct Cards hand[2], handAndBoard[7];
-} player1, player2, player3, player4;
-struct Player* pPlayers[MAX_PLAYERS] = {&player1, &player2, &player3, &player4};
+	CARD	deck[52];
+	CARD	boardCards[5];
+	CARD	temp;
+	FLOW	flow;
+	BET		bet;
+};
 
 //extern variables
-string faces[4] = {"Hearts", "Diamonds", "Clubs", "Spades"};
-extern const string basicSpacer = "                    "; // 20 spaces
-extern const string basicLiner  = "--------------------"; // 20 letters
+extern struct Game game;
+extern PLAYER player1, player2, player3, player4;
+extern P_PLAYER pPlayers[MAX_PLAYERS];
+extern struct Beting bet;
 
-//void flowController(string input);
-//void startDecideMode();
-//void startBetMode();
-void startNextPhase();
-int  assignBlankSpaces(int occupiedLines);
+//functions
+int         assignBlankSpaces(int occupiedLines);
+void        runPoker();
+int			playAnotherRoundScreen();
+P_PLAYER	runPokerRound();
 
-//-- MAIN FUNCTIONS
-void runPoker();
-struct Player* runPokerRound();
-int  playAnotherRoundScreen();
-void setNewTable();
+#endif

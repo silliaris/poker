@@ -1,99 +1,99 @@
-#pragma once
 #include "cardCalculation.hpp"
-#include "poker.cpp" //using backwards #include for code assistance in KDevelop
-
-#include <iostream>
-#include <algorithm>
-
 
 //-----------------------------------
 // CARD VALUE CALCULATIONS
 //-----------------------------------
 
 //main function for comparations
-int calculateHandValue(struct Player* player) {
+int calculateHandValue(P_PLAYER player) {
+	if (!player->isInGame)
+		return 0;
 
 	//prepare numbers for calculating
-	handAndBoardCards(player); 
-
-	int cardValue = 0;
-	cardValue = findPairs(player) + findFlush(player) + findStraight(player);
-	cardValue = cardValue * 2 + getHighHand(player); //get cards from hand, which has most minor value from all cards
-
-	//DEBUG PRINT - this should not be present in final version!
-	/*
-	cout << player->name << " Pairs: " << findPairs(player) << " Flush: " 
-	<< findFlush(player) << " findStraight: " << findStraight(player) 
-	<< " High hand: " << getHighHand(player) <<endl;
-	cout << "Card value: " << cardValue << endl;
-	*/
-
+	handAndBoardCards(player);
+	
+	int cardValue = findPairs(player) + findFlush(player) + findStraight(player);
+	if (cardValue == 0)
+		cardValue = getHighHand(player);
 	player->handValue = cardValue;
-	return cardValue;
-};
 
-int getHighHand(struct Player* player) {
+	printf("%s's comination: %s = %d",player->name,cardCombinationName(player),player->handValue);
+
+	return cardValue;
+}
+
+
+int getHighHand(P_PLAYER player) {
 	int highHand = 0;
-	for (int i = 0; i<7; i++) {
+	for (int i = 0; i<7; i++)
 		if (player->handAndBoard[i].value > highHand)
 			highHand = player->handAndBoard[i].value;
-	}
 	return highHand;
 }
 
-int findFlush(struct Player* player) {
-	//zjisti pro každou barvu počet karet - pokud jich je pět, tak je to flush
-	extern string faces[4];
+int findFlush(P_PLAYER player) {
+	//find out faces of each card. If 5 are same, it's flush
 	int sameFaces[4] = {0,0,0,0};
 	int flushValue = 0;
 	
 	for (int i = 0; i<4; i++) {
-		for (int ii = 0; ii<7; ii++) {
+		for (int ii = 0; ii<7; ii++)
 			if (player->handAndBoard[ii].color == i && player->handAndBoard[ii].value != 0)
 				sameFaces[i]++;
-		}
-		//cout << sameFaces[i] << endl; //DEBUG
 		if (sameFaces[i] >= 5)
 			flushValue = FLUSH_VALUE;
 	}
-	
 	return flushValue;
 }
 
-int findStraight (struct Player* player) {
+int cmpfunc (const void * a, const void * b) {
+   return ( *(int*)a - *(int*)b );
+}
 
-	//sort cards
-	int sortedValues[HAND_AND_BOARD_SIZE + 1];
-	
+
+int findStraight (P_PLAYER player) {
+	//skonči pokud je 4 a míň karet
+	if (game.flow.round < 1) {
+		printf("Not staright: Not enough cards on board");
+		return 0;
+	}
+
+	printf("Calculating straight.");
+
+	//sort cards in hand
+	int sortedValues[HAND_AND_BOARD_SIZE];
 	for (int i = 0; i<HAND_AND_BOARD_SIZE; i++)
 		sortedValues[i] = player->handAndBoard[i].value;
-	sort(sortedValues, sortedValues + HAND_AND_BOARD_SIZE);
-	sortedValues[HAND_AND_BOARD_SIZE] = 0; //variable compared after last card
+	qsort(sortedValues, HAND_AND_BOARD_SIZE, sizeof(int), cmpfunc);
 
-	//find strings of similar values
-	int highestCard;
-	int combo = 0;
-	int streak = 0;
-	
-	for (int i = 0; i<7; i++) {
+	int highestCard = 0;
+	int straightLength = 0;
+	int savedStraight = 0;	
+
+	for (int i = 0; i < HAND_AND_BOARD_SIZE; i++)
 		switch (sortedValues[i+1] - sortedValues[i]) {
 			case 0:		//value is the same - continue in loop, just don't increment
 			break;
-			case 1: 		// value is higher by 1 - increment by 1
-				combo++;
+			case 1: 		//karta je o 1 větší
+				straightLength++;
 			break;
-			default:		//end counting and overwrite value combo to get highest value, with highest card
-				if (combo > streak) {
-					streak = combo + 1;
-					combo = 0;
+			default:		//skonči tulhe postupku, zaznamenej její délku a nejvyšší kartu
+				if (straightLength > savedStraight) {
+					savedStraight = straightLength + 1; //skutečná délka postupky
 					highestCard = sortedValues[i];
 				}
+				straightLength = 0;
 			break;
 		}
-	}
-	
+
+	//TODO: tohle by mělo vrátit momentální postupku
+	printf("\n");
+	printf("Straight cards: %d - highest card: %d\n",savedStraight, highestCard);
+
+	printf("Finding out flush\n");
+
 	//find out if it's flush
-	int cardsPositions[5];
+	int cardsPositions[5] = {0,0,0,0,0};
 	int n = 0;
 	//find positions of cards that are making straight
 	for (int ii = highestCard - 4; ii <= highestCard; ii++) {
@@ -104,118 +104,176 @@ int findStraight (struct Player* player) {
 			}
 		}
 	}
-
-	int isFlush;
+	
+	int isFlush = 1;
 	for (int i = 0; i < 5; i++) {
 		if (player->handAndBoard[cardsPositions[i]].color != player->handAndBoard[cardsPositions[0]].color) {
 			isFlush = 0;
 			break;
 		}
 	}
-	isFlush = 1;
-	
-	//DEBUG - print of card positions
-	/*for (int i = 0; i<5; i++)
-		cout << "Cards positions: " << cardsPositions[i] << endl;
-	*/
-	
+
+	printf("Assigning return valu\n");
+	//cout << "Assigning return value" << endl;
+
 	//Assign return value
 	int returnVal = 0;
-	if (streak >= 5) {
-		returnVal = STRAIGHT_VALUE;
-
-		if (isFlush == 1) {
-			//cout << "Straight flush!" << endl;
+	if (savedStraight >= 5) {
+		if (isFlush)
 			returnVal = STRAIGHT_FLUSH_VALUE;
-		}
+		else 
+			returnVal = STRAIGHT_VALUE;
 	}
-	
 	//Low ace straight
-	if (streak == 4 && highestCard - 4 == 2 && sortedValues[HAND_AND_BOARD_SIZE] == 14) {
-		//cout << "Straight from Ace! HighestCard: " << streak << endl;
+	if (savedStraight == 4 && highestCard - 4 == 2 && sortedValues[HAND_AND_BOARD_SIZE] == 14)
 		returnVal = STRAIGHT_VALUE;
-	}
 	
-	if (returnVal) 
+	if (returnVal != 0)
 		returnVal += highestCard;
 
+	printf("Straight value = %d\n",returnVal);
+	//cout << "Straight value = " << returnVal << endl;
 	return returnVal;
 }
 
-/* 
- * Přiřaď hodnotu ke každé kombinaci. Musím si udělat na kombinace tabulku, která bude říkat, co má jakou honotu. 
- * 
- * High hand: 	0-14
- * Pair: 		100
- * Two pairs:	200
- * 3 of a kind: 300
- * Straight: 	1000 (měřit nejnižší kartu)
- * Flush: 		2000
- * Full house:	5000
- * 4 of a kind: 8000
- * S. flush:	10 000
- * Royal flush: 10 014
- */
 
 //TODO: Refractor this shit - I have no idea what is it doing
-void handAndBoardCards(struct Player* player) {
+void handAndBoardCards(P_PLAYER player) {
 	int i = 0;
 	for (; i<2; i++)
 		player->handAndBoard[i] = player->hand[i];
 	
-	for (int j = 0; !game.boardCards[j].name.empty() && j<5;i++, j++)
+	//for (int j = 0; !game.boardCards[j].name.empty() && j<5;i++, j++)
+	for (int j = 0; strlen(game.boardCards[j].name) > 0 && j<5;i++, j++)
 		player->handAndBoard[i] = game.boardCards[j];
-
-	//DEBUG
-	/*
-	cout << "Running handAndBoardCards():" << endl;
-	for (i = 0; !player->handAndBoard[i].name.empty() && i<7; i++)
-		cout << player->handAndBoard[i].name << endl;
-	*/
 }
 
-int findPairs(struct Player *player) {
-	int sameValues[7];
-	int cardValue[7];
-	//null variables
-	for (int i = 0; i<7;i++) {
-		sameValues[i] = 0;
-		cardValue[i] = 0;
-	}
+int findPairs(P_PLAYER player) {
 	
-	for (int j = 0; j < 7 && player->handAndBoard[j].value != 0; j++) {		
+	int cardsCombined;
+	struct Combination {
+		int combinationType; //pair, 3/4 of kind
+		int cardValue; //king, ace,etc
+	} combination[3] = {{0,0},{0,0},{0,0}};
+	
+	int combinationNumber = 0;
+	for (int j = 0; j < 7 && player->handAndBoard[j].value != 0; j++) {
 		int currentCardVal = player->handAndBoard[j].value;
+		cardsCombined = 0;
 		for (int i = 0; i < 7; i++) {
-			if (currentCardVal == player->handAndBoard[i].value) {
-				sameValues[j]++;
-				cardValue[j] = player->handAndBoard[j].value;
+			if (currentCardVal == player->handAndBoard[i].value)
+				cardsCombined++;
+		}
+		//assign combination to a structure
+		printf("Calculating pairs\n");
+		//cout << "Calculating pairs" << endl;
+		if (cardsCombined > 1)
+			if (j == 0 ||
+			(combination[0].cardValue != currentCardVal
+			&& combination[1].cardValue != currentCardVal
+			&& combination[2].cardValue != currentCardVal)) {
+				combination[combinationNumber].combinationType = cardsCombined;
+				combination[combinationNumber].cardValue = currentCardVal;
+				combinationNumber++;
+				printf("Combination: %d: %d cards, %d\n", combinationNumber, cardsCombined, currentCardVal);
+				//cout << "Combination " << combinationNumber << ": " << cardsCombined << " cards, " << currentCardVal << endl;
+			}		
+	}
+
+	int resultCombination = 0;
+	//najdi typ kombinací 
+	for (int i = 0; i < 3; i++) {
+		if (combination[i].combinationType > 0) {
+			if (combination[i].combinationType == 4)
+				resultCombination = 16; //4 OF KIND
+			else 
+				resultCombination += combination[i].combinationType;
+		}
+	}
+
+	int combinationValue = 0;
+	switch (resultCombination) {
+		case 2:
+			combinationValue = 100;
+			break;
+		case 3:
+			combinationValue = 300;
+			break;
+		case 4:
+			combinationValue = 200;
+			break;
+		case 5:
+			combinationValue = 5000;
+			break;
+		case 6:
+			combinationValue = 200;
+			break;
+		case 16:
+			combinationValue = 8000;
+			break;
+	}
+	
+	//najdi nejvyšší kartu kombinace
+	int highestCardValue = 0;
+
+	if (combinationValue > 0) {
+		int highestCombinationType = 0;
+		for (int i = 0; i < 3; i++) {
+			if (combination[i].combinationType >= highestCombinationType) {
+				if (combination[i].combinationType > highestCombinationType)
+					highestCardValue = 0;
+				highestCombinationType = combination[i].combinationType;
+				if (combination[i].cardValue > highestCardValue)
+					highestCardValue = combination[i].cardValue;
 			}
 		}
 	}
 	
-	int combinationValue = 0;
-	int combined = 0;
-	for (int i = 0; i<7;i++) {
-		switch (sameValues[i]) {
-			case 1: break;
-			case 2: {
-				combinationValue += PAIR_VALUE + cardValue[i];
-				break;
-			}
-			case 3: {
-				combinationValue += PAIR_VALUE + cardValue[i];
-				break;
-			}
-			case 4: {
-				combinationValue += PAIR_VALUE + cardValue[i];
-			}
-		}
-	}
-	return combinationValue;
+	return combinationValue + highestCardValue;
+}
+
+const char *cardCombinationName(P_PLAYER player) {
+	/* 
+	* Přiřaď hodnotu ke každé kombinaci. Musím si udělat na kombinace tabulku, která bude říkat, co má jakou honotu. 
+	* 
+	* High hand: 	0-14
+	* Pair: 		100
+	* Two pairs:	200
+	* 3 of a kind:  300
+	* Straight: 	1000 (měřit nejnižší kartu)
+	* Flush: 		2000
+	* Full house:	5000
+	* 4 of a kind: 8000
+	* S. flush:	10 000
+	* Royal flush: 10 014
+	*/
+
+	int handVal = player->handValue;
+	
+	if (handVal < 100)
+		return "High hand";
+	else if (handVal >= 100 && handVal < 200)
+		return "Pair";
+	else if (handVal >= 200 && handVal < 300)
+		return "Two pairs";
+	else if (handVal >= 300 && handVal < 1000)
+		return "3 of kind";
+	else if (handVal >= 1000 && handVal < 2000)
+		return "Straight";
+	else if (handVal >= 2000 && handVal < 5000)
+		return "Flush";
+	else if (handVal >= 5000 && handVal < 8000)
+		return "Full house";
+	else if (handVal >= 8000 && handVal < 10000)
+		return "4 of kind";
+	else if (handVal >= 10000 && handVal < 10014)
+		return "Straight flush";
+	else
+		return "Royal flush";
 }
 
 
-struct Player* calculateWinner() {
+P_PLAYER calculateWinner() {
 	//calculate all players values
 	for (int i = 0; i < MAX_PLAYERS; i++) {
 		calculateHandValue(pPlayers[i]);
@@ -223,12 +281,13 @@ struct Player* calculateWinner() {
 		//if player is not in game, his card value is 0
 		if (!pPlayers[i]->isInGame)
 			pPlayers[i]->handValue = 0;
-		
-		cout << pPlayers[i]->name << "'s hand value: " << pPlayers[i]->handValue << endl;
+
+		//cout << pPlayers[i]->name << "'s hand value: " << pPlayers[i]->handValue << endl;
+		printf("%s' hand value: %d\n",pPlayers[i]->name,pPlayers[i]->handValue);
 	}
 	
 	//struct Player* higestValuePlayer = pPlayers[0];
-	struct Player* currentPlayer;
+	P_PLAYER currentPlayer;
 	int isHighestValue;
 	
 	for (int playerNumber = 0; playerNumber < MAX_PLAYERS; playerNumber++) {
@@ -242,11 +301,8 @@ struct Player* calculateWinner() {
 				break;
 			}
 		}
-		if (isHighestValue) {
+		if (isHighestValue)
 			break;
-		}
 	}
-	//cout << "Something weird happened in this function" << endl;
 	return currentPlayer;
 }
-

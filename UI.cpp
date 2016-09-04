@@ -1,115 +1,63 @@
-#pragma once
 #include "UI.hpp"
-#include "poker.cpp"
+#include "stdlib.h"
 
-#include <string>
-#include <iostream>
+//-----------------------------------
+// EXTERN VARIABLES
+//-----------------------------------
+struct UI ui;
 
+const char* faces[4] = {"Hearts", "Diamonds", "Clubs", "Spades"};
+const char* basicSpacer = "                    "; // 20 spaces
+const char* basicLiner  = "-------------------->   "; // 20+4 letters
 
-void printEmptyLines (int linesCount) {
-	for (int i = 0; i < linesCount; i++)
-		cout << endl;
+//-----------------------------------
+// REFACTORED FUNCTIONS
+//-----------------------------------
+
+void clearScreen(){
+	for(int i = 0; i < 100; i++)
+		printf("\n");
 }
 
-void pressEnterToContinue() {
-	cout << "Press ENTER to continue:";
-	cin.ignore();
-	clearScreen();
-}
+void linesSeparator(const char* symbol, int linesCount, int linesLength) {
+	char str[100] = "";
 
-void linesSeparator(string symbol, int linesCount, int linesLength) {
-
-	//prepare line to print
-	if (symbol.length() > 1)
+	if (strlen(symbol) > 1)
 		return;
 
-	string str;
-	string line;
-
 	for (int i = 0; i < linesLength; i++)
-		str.append(symbol);
+		strcat(str, symbol);
 	for (int i = 0;i < linesCount;i++)
-		cout << str << endl;
+		printf("%s\n",str);
 }
 
-void printScreenHeader()  {
-	//string inLineSeparator = " ~~~~~~~~~~ ";
-	string inLineSeparator = " ---------- ";
-	//player1.moneyBet = 0;	
-	
-	//header of the screen - shoud be always present
+void printScreenHeader() {
+	const char* inLineSeparator = "----------";
+
 	linesSeparator("-",2,SCREEN_WIDTH);
-	cout << "---- " <<"Your money: " << player1.moneyTotal << inLineSeparator
-	<< "Your bet: " << player1.moneyBet << inLineSeparator 
-	<< "Current Bet: " << game.bet.betOnTable << inLineSeparator
-	<< "Pot: " << game.bet.pot << " ----" << endl;
+	printf("Your bet: %d %s Current Bet: %d %s Pot: %d ----\n",
+		   player1.moneyBet, inLineSeparator, game.betOnBoard,
+		   inLineSeparator, game.bet.pot);
 	linesSeparator("-",1,SCREEN_WIDTH);
 }
 
-void introScreen() {
-	linesSeparator("-",4,SCREEN_WIDTH);	//empty header
-	
-	assignBlankSpaces(1);
-	printEmptyLines(ui.blankSpaces[0]);
-	cout << basicSpacer <<"WELCOME TO THE POKER GAME!" << endl;
-	printEmptyLines(ui.blankSpaces[1]);
-	
-	printScreenFooter("","Press ENTER to continue.","");
-	
-	cin.ignore();	
+void printScreenFooter(const char *infoText, const char *actionText, const char *message) {
+	linesSeparator("-",2,SCREEN_WIDTH);
+	printf("%s%s\n%s%s\n%s%s\n",
+		   basicLiner,infoText, basicLiner,
+		   actionText, basicLiner, message);
+	linesSeparator("-",1,SCREEN_WIDTH);
 }
 
-
-void mainMenu() {
-	linesSeparator("-",4,SCREEN_WIDTH); //empty header
-	assignBlankSpaces(5);
-	printEmptyLines(ui.blankSpaces[0]);
-
-	cout << basicSpacer <<"(1)  PLAY POKER" << endl
-	<< endl 
-	<< basicSpacer << "(2)  Change your name   (Current name: " << player1.name << ")" << endl 
-	<< endl 
-	<< basicSpacer << "(0)  Quit" << endl;
-
-	printEmptyLines(ui.blankSpaces[1]);
-	printScreenFooter("","Enter number:","");
-	
-	string input;
-	cin >> input;
-
-	clearScreen();
-	switch (input[0]) {
-		case '1': {
-			
-			break;
-		}
-		case '2': {
-			cout << "Insert new name:" << endl;
-			cin >> player1.name;
-			cout << "Name succesfully changed!" << endl;
-			cin.ignore();
-			clearScreen();
-			mainMenu();
-			break;
-		}
-		case '0': {
-			exit(EXIT_SUCCESS);
-			//abort();
-		}
-		default: {
-			cout << "Wrong input!";
-			cin.ignore();
-			mainMenu();
-			break;
-		}
-	}
+void printEmptyLines(int count) {
+	for (int i = 0; i < count; i++)
+		printf("\n");
 }
 
-//find out how many spaces to leave for the game
 int assignBlankSpaces(int occupiedLines) {
 	static int linesTotal = 30;
 	int freeLines = linesTotal - occupiedLines;
-	
+
 	if (freeLines % 2) {
 		ui.blankSpaces[0] = (freeLines - 1) / 2;
 		ui.blankSpaces[1] =  (freeLines + 1) / 2;
@@ -119,15 +67,101 @@ int assignBlankSpaces(int occupiedLines) {
 	return linesTotal;
 }
 
-/*
-void composeScreen (string infoText, string actionText, string message) {
+void introScreen() {
+	//clearScreen();
+	linesSeparator("-",4,SCREEN_WIDTH);	//empty header
+
+	assignBlankSpaces(1);
+	printEmptyLines(ui.blankSpaces[0]);
+
+	printf("%sWELCOME TO THE POKER GAME!", basicSpacer);
+	printEmptyLines(ui.blankSpaces[1]);
+
+	printScreenFooter("","Press ENTER to continue.","");
+
+	pressEnterToContinue();
+}
+
+void pressEnterToContinue() {
+	int enter = 0;
+	while (enter != '\r' && enter != '\n')
+		enter = getchar();
+	printf("Enter entered!");
+}
+
+void mainMenu() {
+	clearScreen();
+	linesSeparator("-",4,SCREEN_WIDTH); //empty header
+
+	assignBlankSpaces(6);
+	printEmptyLines(5);
+	printEmptyLines(ui.blankSpaces[0]);
+
+	printf("%s(1)  PLAY POKER\n\n%s(2)  CHANGE YOUR NAME\n\n%s(3)  QUIT\n\n",
+		   basicSpacer,basicSpacer,basicSpacer);
+
+	printEmptyLines(ui.blankSpaces[1]);
+	printScreenFooter("","Enter number:","");
+
+
+	int input = getchar();
+	clearScreen();
+
+	//validate input
+	switch (input) {
+		case '1': {
+
+			break;
+		}
+		case '2': {
+			printf("Insert new name: \n");
+
+			char name[30];
+			getchar();
+			fgets (name, 30, stdin);
+			printf("%s", name);
+			player1.name = name;
+			getchar();
+
+			/*
+			cout << "Insert new name:" << endl;
+			cin >> player1.name;
+			cout << "Name succesfully changed!" << endl;
+			cin.ignore();
+			*/
+
+			clearScreen();
+			mainMenu();
+			break;
+		}
+		case '3': {
+			exit(EXIT_SUCCESS);
+			//abort();
+		}
+		default: {
+			printf("Wrong input!");
+			getchar();
+			//cout << "Wrong input!";
+			//cin.ignore();
+			mainMenu();
+			break;
+		}
+	}
+}
+
+
+void wrongInputScreen () {
+	createScreen(game.flow.infoText,game.flow.actionText,"Wrong input. Try again.");
+}
+
+void createScreen (const char* infoText, const char* actionText, const char* message) {
 	game.flow.infoText = infoText;
 	game.flow.actionText = actionText;
-	
+
 	clearScreen();
 	printScreenHeader();
-	assignBlankSpaces(11); //11 spaces on screen by default
-	
+	assignBlankSpaces(11); //11 spaces on sceen by default
+
 	printEmptyLines(ui.blankSpaces[0]);
 	printHand(&player1);
 	printEmptyLines(2);
@@ -135,105 +169,50 @@ void composeScreen (string infoText, string actionText, string message) {
 	printEmptyLines(ui.blankSpaces[1]);
 
 	printScreenFooter(infoText, actionText, message);
-	
-	
-	string input;
-	cin >> input;
-	
-	flowController(input); //decide which line to print this time
-}
-*/
-
-void printScreenFooter(string infoText, string actionText, string message) {
-	linesSeparator("-",1,SCREEN_WIDTH);
-	cout << basicLiner << ">   " << infoText << endl;
-	cout << basicLiner << ">   " << actionText << endl;
-	cout << basicLiner << ">   " << message << endl;
-	linesSeparator("-",1,SCREEN_WIDTH);
 }
 
-//-----------------------------------
-// SCREEN FUNCTIONS
-//-----------------------------------
+void createBetScreen (int minimumBet, int maximumBet) {
+	char limits[100] = "";
 
-/*
-void showWinnerScreen() {	//OBSOLETED FUNCTOIN!
+	sprintf(limits, "Minimum bet: %d. Maximum bet: %d", minimumBet, maximumBet);
 
-	clearScreen();
-	printScreenHeader();
-	assignBlankSpaces(26);
-	
-	printEmptyLines(ui.blankSpaces[0]);
-
-	//printBoardCards();
-	for (int i = 0; i<4; i++) {
-		printHand(pPlayers[i]);
-		cout << pPlayers[i]->name << "'s card value: " << calculateHandValue(pPlayers[i]) << endl;
-	}
-	
-	//DECIDE WINNER
-	printEmptyLines(1);
-	printEmptyLines(ui.blankSpaces[0]);
-		
-	printScreenFooter("","Game ended","");
-	
-	cin.ignore();
-	cin.ignore();
-}
-*/
-
-void clearScreen(){
-	cout << string( 100, '\n' );
+	createScreen("Enter your bet (number) or fold cards (F):",limits,"");
 }
 
-void printDeck() {
-	int i = 0;
-	while (!game.deck[i].name.empty()) 
-		cout << game.deck[i++].name << endl;
+void printHand(P_PLAYER player) {
+	printf("Player %s's hand:\n1: %s\n2: %s\n",
+		   player->name,player->hand[0].name,player->hand[1].name);
 }
 
 void printBoardCards() {
-	cout << "Cards on the board: " << endl;
-	for(int i=0; i < BOARD_SIZE; i++)
-		cout << i+1 << ": " << game.boardCards[i].name << endl;
+	printf("Cards on the board:\n");
+	for(int i=0; i < BOARD_SIZE; i++) {
+		printf("%d: %s \n",i+1,game.boardCards[i].name);
+	}
 }
 
-void printHand(struct Player* player) {
-	
-	cout << "Player " << player->name << "'s hand:" << endl
-	<< "1: " << player->hand[0].name << endl
-	<< "2: " << player->hand[1].name << endl;
-}
-
-//WINNER SCREEN FUNCTIONS
-
-struct Player* resultsScreen() {
-	//winner calculation
-	struct Player* winner = calculateWinner();
-	//dej celý betOnBoard winnerovi;
-	winner->moneyTotal += game.betOnBoard;
-	game.betOnBoard = 0;
-	
-	processEndOfRound(winner);
-	
+void resultsScreen(P_PLAYER winner) {
 	clearScreen();
 	printScreenHeader();
 	assignBlankSpaces(11); //11 spaces on screen by default
-	printEmptyLines(ui.blankSpaces[0]);
+	printEmptyLines(6);
 	printCardTable();
 	printEmptyLines(2);
 	printBoardCards();
 	printEmptyLines(ui.blankSpaces[1]);
 	printScreenFooter("Winner is: ", winner->name, "PRESS ANY KEY TO CONTINUE");
-	
-	cin.ignore();
-	return winner;
+}
+
+void printSpaces (int count) {
+	for (int i = 0; i < count; i++) {
+		printf(" ");
+	}
 }
 
 
 void printCardTable() {
 	int spacesCount;
-	string foldedState;
+	const char* foldedState;
 
 	for (int i = 0; i < MAX_PLAYERS; i++) {
 		if (pPlayers[i]->isInGame)
@@ -241,45 +220,43 @@ void printCardTable() {
 		else
 			foldedState = "Folded ";
 
-		cout << foldedState;
-		spacesCount = ROW_SIZE + 2 - stringLength(foldedState);
+		printf("%s",foldedState);
+		spacesCount = ROW_SIZE + 2 - strlen(foldedState);
 		printSpaces(spacesCount);
 	}
-	cout << endl;
-	
-	//now: FOR NOW ALL PLAYERS WILL BE SHOWN
+	printf("\n");
+
 	for (int i = 0; i < MAX_PLAYERS; i++) {
-		cout << pPlayers[i]->name << ": ";
-		spacesCount = ROW_SIZE - stringLength(pPlayers[i]->name);
+		printf("%s: ",pPlayers[i]->name);
+		spacesCount = ROW_SIZE - strlen(pPlayers[i]->name);
 		printSpaces(spacesCount);
 	}
-	cout << endl;
+	printf("\n");
 
 	for (int card = 0; card < 2; card++) {
 		for (int i = 0; i < MAX_PLAYERS; i++) {
-			cout << pPlayers[i]->hand[card].name << "  ";
-			spacesCount = ROW_SIZE - stringLength(pPlayers[i]->hand[card].name);
+			printf("%s  ",pPlayers[i]->hand[card].name);
+			spacesCount = ROW_SIZE - strlen(pPlayers[i]->hand[card].name);
 			printSpaces(spacesCount);
 		}
-		cout << endl;
+		printf("\n");
 	}
-}
+	printf("\n");
 
-int stringLength(string str) {
-	int i;
-	for (i = 0; i < 100; i++) {
-		if (str[i] == '\0' || str[i] == '\n') {
-			break;
-		}
-	}
-	return i; //nevím, jestli to bude přesné nebo o 1 menší - breaknutý for loop stejně zvedne count o 1?
-}
+	const char* combination;
+	for (int i = 0; i < MAX_PLAYERS; i++) {
+		if (!pPlayers[i]->isInGame)
+			combination = " ";
+		else
+			//combination = cardCombinationName(pPlayers[i]);
+			combination = "placeholder combination";
 
-void printSpaces (int count) {
-	string str; 
-	for (int i = 0; i < count; i++) {
-		cout << " "; //just insert line :)
+		printf("%s", combination);
+		spacesCount = ROW_SIZE + 2 - strlen(combination);
+
+		printSpaces(spacesCount);
 	}
+	printf("\n");
 }
 
 

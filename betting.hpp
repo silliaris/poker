@@ -1,18 +1,32 @@
-// BETTING UI - tohle UI nahrazuje většinu toho, které teď v UI a poker.cpp je. Tam je strašnej bordel.
-void 	createScreen (string infoText, string actionText, string message);
-void	wrongInputScreen();
-void 	createBetScreen (int minimumBet, int maximumBet);
+#ifndef BETTING_DEFINED
+#define BETTING_DEFINED
 
-//auxillary UI fnc
-int 	countLines (string s);
+#include "poker.hpp"
 
 //General functions
-int 			isPlayer (struct Player *player);
-struct Player* 	nextPlayer();
-struct Player*	currentPlayer();
+int 		isPlayer(P_PLAYER player);
+P_PLAYER 	nextPlayer();
+P_PLAYER	currentPlayer();
+P_PLAYER	moveSmallBlindPlayer();
 
-int 			enterBetAI (struct Player* player, int minimumBet);
-int 			enterBetPlayer (struct Player* player, int minimumBet);
-struct Player*	bettingRound();
-void			bettingCycle();
-void 			processMoneyBet(struct Player* player, int bet, int minBet);
+//entering bets
+int 	betRound();
+int 	enterBetAI (P_PLAYER player, int minimumBet);
+int 	betAI(P_PLAYER player);
+int		betPlayer(P_PLAYER player);
+void 	processMoneyBet(P_PLAYER player, int bet, int minBet);
+
+//automatic bets
+int 	smallBlindBet (P_PLAYER player);
+int 	bigBlindBet (P_PLAYER player);
+
+//mins and maxes for betting
+int 	minimumBet(P_PLAYER player);
+int 	maximumBet(P_PLAYER player);
+
+//misc
+void 	processEndOfRound(P_PLAYER winner);
+int 	countPlayersInGame();
+int 	countLines (const char* s);
+
+#endif

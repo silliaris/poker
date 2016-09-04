@@ -1,9 +1,7 @@
+#include "poker.hpp"
 
-#include "poker.cpp"
-
-int main() {
-	//preciseAgeCount();
+int main()
+{
 	runPoker();
-	
 	return 0;
 }
